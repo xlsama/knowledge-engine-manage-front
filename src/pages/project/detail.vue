@@ -25,7 +25,13 @@ onMounted(() => {
     <el-step title="Step 2" :icon="CircleCheckFilled" />
     <el-step title="Step 3" :icon="CircleCheckFilled" />
   </el-steps>
-  <h2>项目信息</h2>
+  <div>
+    <h2>项目信息</h2>
+    <div>
+      <el-button type="primary">编辑项目信息</el-button>
+      <el-button type="info" plain>删除项目</el-button>
+    </div>
+  </div>
   <el-descriptions :column="1">
     <el-descriptions-item label="项目名称">{{ detail.project_name }}</el-descriptions-item>
     <el-descriptions-item label="项目描述">{{ detail.description }}</el-descriptions-item>
