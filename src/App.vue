@@ -28,6 +28,8 @@ import MENU_LIST from './constants/menu'
 
 <style lang="scss" scoped>
 .container {
+  min-height: 100vh;
+
   .header {
     background: pink;
   }

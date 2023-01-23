@@ -1,6 +1,9 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
+import { getProjectList } from '../../api/project'
+import { ElMessage } from 'element-plus'
+import dayjs from 'dayjs'
 
 const form = reactive({
   pn: 1,
@@ -10,9 +13,38 @@ const form = reactive({
   rangeTime: []
 })
 
-const onSubmit = () => {
-  console.log(form)
+const tableData = reactive({
+  datas: [],
+  total: 0
+})
+
+const fetchProjectList = () => {
+  const [start_create_time, end_create_time] = form.rangeTime
+  if (start_create_time) {
+    form.start_create_time = dayjs(start_create_time).format('YYYY-MM-DD')
+  }
+  if (end_create_time) {
+    form.end_create_time = dayjs(end_create_time).format('YYYY-MM-DD')
+  }
+
+  getProjectList(form).then(res => {
+    if (res.data.code) {
+      ElMessage.error(res.data.message)
+      return
+    }
+    const { datas, total } = res.data.result
+    tableData.datas = datas
+    tableData.total = total
+  })
 }
+
+const onSubmit = () => fetchProjectList()
+
+const handleClick = () => {
+  console.log('click')
+}
+
+onMounted(() => fetchProjectList())
 </script>
 
 <template>
@@ -39,6 +71,20 @@ const onSubmit = () => {
       <el-button :icon="Search" circle style="margin-left: 10px" @click="onSubmit" />
     </el-form-item>
   </el-form>
+
+  <el-table :data="tableData.datas" style="width: 100%">
+    <el-table-column prop="project_name" label="项目名称" />
+    <el-table-column prop="description" label="项目描述" />
+    <el-table-column prop="search_types" label="检索demo配置" />
+    <el-table-column prop="create_time" label="创建时间" />
+    <el-table-column prop="status" label="状态" />
+    <el-table-column fixed="right" label="操作">
+      <template #default>
+        <el-button link type="primary" size="small" @click="handleClick">Detail</el-button>
+        <el-button link type="primary" size="small">Edit</el-button>
+      </template>
+    </el-table-column>
+  </el-table>
 </template>
 
 <style lang="scss" scoped>
