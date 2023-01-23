@@ -47,7 +47,7 @@ export function saveProject(data) {
 }
 
 // 获取项目详情
-export function getProjecDetail(id) {
+export function getProjecDetailById(id) {
   return request({
     url: '/api/management/project/get',
     method: 'post',

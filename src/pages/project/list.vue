@@ -4,6 +4,8 @@ import { Search } from '@element-plus/icons-vue'
 import { getProjectList } from '../../api/project'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 const form = reactive({
   pn: 1,
@@ -40,9 +42,11 @@ const fetchProjectList = () => {
 
 const onSubmit = () => fetchProjectList()
 
-const handleClick = () => {
-  console.log('click')
-}
+const goDetail = id => router.push(`/project/detail?id=${id}`)
+
+const handleEdit = () => {}
+
+const handleDelete = () => {}
 
 onMounted(() => fetchProjectList())
 </script>
@@ -79,9 +83,10 @@ onMounted(() => fetchProjectList())
     <el-table-column prop="create_time" label="创建时间" />
     <el-table-column prop="status" label="状态" />
     <el-table-column fixed="right" label="操作">
-      <template #default>
-        <el-button link type="primary" size="small" @click="handleClick">Detail</el-button>
-        <el-button link type="primary" size="small">Edit</el-button>
+      <template #default="scope">
+        <el-button link type="primary" @click="goDetail(scope.row.id)">查看</el-button>
+        <el-button link type="primary" @click="handleEdit">编辑</el-button>
+        <el-button link type="primary" @click="handleDelete">删除</el-button>
       </template>
     </el-table-column>
   </el-table>

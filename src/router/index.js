@@ -10,8 +10,16 @@ export const routes = [
   {
     path: '/project',
     children: [
-      { path: 'list', component: ProjectList },
-      { path: 'detail', component: ProjectDetail }
+      {
+        path: 'list',
+        component: ProjectList,
+        meta: { title: '项目列表' }
+      },
+      {
+        path: 'detail',
+        component: ProjectDetail,
+        meta: { title: '项目详情' }
+      }
     ]
   },
   { path: '/404', component: NotFound },
