@@ -1,5 +1,9 @@
 <script setup>
 import MENU_LIST from './constants/menu'
+import { useRouter } from 'vue-router'
+const router = useRouter()
+
+const handleSelect = path => router.push(path)
 </script>
 
 <template>
@@ -8,7 +12,7 @@ import MENU_LIST from './constants/menu'
     <el-container>
       <el-aside width="200px">
         <el-scrollbar>
-          <el-menu :default-openeds="[]">
+          <el-menu :default-openeds="[]" @select="handleSelect">
             <el-sub-menu :index="item.link" v-for="item in MENU_LIST" :key="item.link">
               <template #title>{{ item.title }}</template>
               <el-menu-item :index="child.link" v-for="child in item.children">{{
