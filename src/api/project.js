@@ -13,7 +13,7 @@ export function getProjectList(data) {
 export function getDataSets() {
   return request({
     url: '/api/management/listDataSets',
-    method: 'GET'
+    method: 'get'
   })
 }
 

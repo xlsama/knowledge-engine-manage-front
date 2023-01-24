@@ -1,9 +1,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { getProjectList } from '../../api/project'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
+import ProjectDialog from '../../components/ProjectDialog.vue'
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
@@ -19,6 +20,9 @@ const tableData = reactive({
   datas: [],
   total: 0
 })
+
+const dialogVisible = ref(false)
+const isEdit = ref(false)
 
 const fetchProjectList = () => {
   const [start_create_time, end_create_time] = form.rangeTime
@@ -42,9 +46,12 @@ const fetchProjectList = () => {
 
 const onSubmit = () => fetchProjectList()
 
-const goDetail = id => router.push(`/project/detail?id=${id}`)
+const showDialog = isShow => {
+  dialogVisible.value = true
+  isEdit.value = isShow
+}
 
-const handleEdit = () => {}
+const goDetail = id => router.push(`/project/detail?id=${id}`)
 
 const handleDelete = () => {}
 
@@ -76,6 +83,7 @@ onMounted(() => fetchProjectList())
     </el-form-item>
   </el-form>
 
+  <el-button type="primary" :icon="Plus" @click="showDialog(false)">新建项目</el-button>
   <el-table :data="tableData.datas" style="width: 100%">
     <el-table-column prop="project_name" label="项目名称" />
     <el-table-column prop="description" label="项目描述" />
@@ -85,11 +93,13 @@ onMounted(() => fetchProjectList())
     <el-table-column fixed="right" label="操作">
       <template #default="scope">
         <el-button link type="primary" @click="goDetail(scope.row.id)">查看</el-button>
-        <el-button link type="primary" @click="handleEdit">编辑</el-button>
+        <el-button link type="primary" @click="showDialog(true)">编辑</el-button>
         <el-button link type="primary" @click="handleDelete">删除</el-button>
       </template>
     </el-table-column>
   </el-table>
+
+  <ProjectDialog v-model:dialogVisible="dialogVisible" :isEdit="isEdit" />
 </template>
 
 <style lang="scss" scoped>
