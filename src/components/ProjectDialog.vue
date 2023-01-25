@@ -2,58 +2,84 @@
 import { Search, UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { onMounted, reactive, ref, watchEffect } from 'vue'
-import { getDataSets, getConfigs } from '../api/project'
+import { getDataSets, getConfigs, upload, saveProject } from '../api/project'
 
-defineProps({
+const props = defineProps({
   dialogVisible: Boolean,
-  isEdit: Boolean
+  editId: Number | null
 })
-const emit = defineEmits(['update:dialogVisible'])
+const emit = defineEmits(['update:dialogVisible', 'fetchProjectList', 'setEditId'])
 
+const formRef = ref()
 const form = reactive({
-  project_id: 1,
-  save_to_draw: false,
-  start_build: false,
-  project_name: '直流知识库',
-  description: '直流知识库项目描述',
+  project_name: '',
+  description: '',
   dataset_ids: [],
-  custom_upload_file_ids: [111, 222],
-  search_config: [
-    {
-      search_type: 'comprehensive|content|summary|resource', //检索demo ,对应 "综合检索|内容检索|富摘要检索|普通资源检索" 必传
-      model_id: 1
-    }
-  ]
+  custom_upload_file_ids: []
 })
-const datasetSelectVisible = ref(false)
-const datasetList = ref([])
-const searchConfig = ref({ enums_zh_list: [], search_type_configs: [] })
-const value = ref('')
-const options = [
-  {
-    value: 'Option1',
-    label: 'Option1'
-  },
-  {
-    value: 'Option2',
-    label: 'Option2'
-  },
-  {
-    value: 'Option3',
-    label: 'Option3'
-  },
-  {
-    value: 'Option4',
-    label: 'Option4'
-  },
-  {
-    value: 'Option5',
-    label: 'Option5'
-  }
-]
+const rules = reactive({
+  project_name: [{ required: true, message: '不能为空', trigger: 'blur' }],
+  description: [{ required: true, message: '不能为空', trigger: 'blur' }],
+  dataset_ids: [{ required: true, message: '不能为空', trigger: 'blur' }]
+})
+const datasets = reactive({
+  values: [],
+  options: [],
+  loading: false
+})
+const configTableData = ref([])
+const uploadRef = ref()
 
 const open = () => emit('update:dialogVisible', true)
-const close = () => emit('update:dialogVisible', false)
+const close = () => {
+  emit('update:dialogVisible', false)
+  emit('setEditId', null)
+}
+
+const remoteMethod = query => {
+  if (query) {
+    datasets.loading = true
+    setTimeout(() => {
+      datasets.loading = false
+      datasets.values = datasets.options.filter(item => item.name.includes(query))
+    }, 200)
+  } else {
+    datasets.values = datasets.options
+  }
+}
+
+const uploadChange = uploadFile => {
+  const formData = new FormData()
+  formData.append('file', uploadFile.raw)
+  upload(formData).then(res => {
+    console.log(res)
+  })
+}
+
+const submit = async isBuild => {
+  await formRef.value.validate()
+
+  const params = {
+    ...form,
+    // project_id: 1, // 项目id, 新增时不传,编辑时传
+    save_to_draw: !isBuild,
+    start_build: isBuild,
+    search_config: configTableData.value.map(item => ({
+      search_type: item.search_type,
+      model_id: item.selectedModelId
+    }))
+  }
+
+  saveProject(params).then(res => {
+    if (res.data.code) {
+      ElMessage.error(res.data.message)
+      return
+    }
+    ElMessage.success(res.data.message)
+    close()
+    emit('fetchProjectList')
+  })
+}
 
 onMounted(() => {
   getDataSets().then(res => {
@@ -61,15 +87,27 @@ onMounted(() => {
       ElMessage.error(res.data.message)
       return
     }
-    datasetList.value = res.data.result.datasets
+    datasets.options = res.data.result.datasets
   })
   getConfigs().then(res => {
     if (res.data.code) {
       ElMessage.error(res.data.message)
       return
     }
-    searchConfig.value = res.data.result
+
+    const { datas } = res.data.result.enums_zh_list[0]
+
+    configTableData.value = res.data.result.search_type_configs.map((item, index) => ({
+      ...item,
+      ...datas[index],
+      search_demo_checked: false,
+      selectedModelId: null
+    }))
   })
+})
+
+watchEffect(() => {
+  console.log(props.editId)
 })
 </script>
 
@@ -78,71 +116,74 @@ onMounted(() => {
     :model-value="dialogVisible"
     @open="open"
     @close="close"
-    :title="`${isEdit ? '编辑' : '新增'}项目`"
+    :title="`${editId || editId === 0 ? '编辑' : '新增'}项目`"
+    width="700"
   >
-    <el-form :model="form" label-width="80">
-      <el-form-item label="项目标题">
+    <el-form :model="form" label-width="80" :rules="rules" ref="formRef">
+      <el-form-item label="项目标题" props="project_name">
         <el-input v-model="form.project_name" />
       </el-form-item>
-      <el-form-item label="项目描述">
+      <el-form-item label="项目描述" props="description">
         <el-input v-model="form.description" type="textarea" />
       </el-form-item>
-      <el-form-item label="数据集">
+      <el-form-item label="数据集" props="dataset_ids">
         <section class="dataset">
-          <div class="content-container">
-            <el-input
-              v-model="form.dataset_ids"
-              placeholder="请输入"
-              @click="datasetSelectVisible = !datasetSelectVisible"
-            />
-            <el-button type="info" :icon="Search" plain>内容库</el-button>
-
-            <el-checkbox-group
-              v-model="datasetList"
-              class="content-select"
-              v-if="datasetSelectVisible"
-            >
-              <el-checkbox v-for="item in datasetList" :label="item.name" :key="item.id" />
-            </el-checkbox-group>
-          </div>
-          <el-button type="info" :icon="UploadFilled" plain>手动上传</el-button>
-        </section>
-      </el-form-item>
-      <el-form-item label="检索配置">
-        <div class="title">
-          <span>检索demo</span>
-          <span>检索模型</span>
-        </div>
-
-        <el-checkbox-group v-model="searchConfig.enums_zh_list" class="search-demo-list">
-          <!-- <el-checkbox
-            v-for="item in searchConfig.enums_zh_list"
-            :label="item"
-            class="search-demo-item"
-          /> -->
-        </el-checkbox-group>
-
-        <div class="search-model-list">
           <el-select
-            v-for="item in searchConfig.search_type_configs"
-            :key="item.search_type"
-            placeholder="请选择"
-            class="search-modal-item"
+            v-model="form.dataset_ids"
+            multiple
+            filterable
+            remote
+            reserve-keyword
+            placeholder="请输入"
+            :remote-method="remoteMethod"
+            :loading="datasets.loading"
           >
             <el-option
-              v-for="model in item.models"
-              :key="model.id"
-              :label="model.name"
-              :value="model.id"
+              v-for="item in datasets.values"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
             />
           </el-select>
-        </div>
+          <!-- <el-button type="info" :icon="Search" plain @click="remoteMethod">内容库</el-button> -->
+          <el-upload ref="uploadRef" action="" :auto-upload="false" :on-change="uploadChange">
+            <el-button type="info" :icon="UploadFilled" plain>手动上传</el-button>
+          </el-upload>
+        </section>
+      </el-form-item>
+
+      <el-form-item label="检索配置">
+        <el-table :data="configTableData" style="width: 100%" border>
+          <el-table-column label="检索demo">
+            <template #default="scope">
+              <el-checkbox v-model="scope.row.search_demo_checked">{{
+                scope.row.enum_zh
+              }}</el-checkbox>
+            </template>
+          </el-table-column>
+          <el-table-column label="检索模型">
+            <template #default="scope">
+              <el-select
+                placeholder="请选择"
+                :disabled="!scope.row.search_demo_checked"
+                v-model="scope.row.selectedModelId"
+              >
+                <el-option
+                  v-for="item in scope.row.models"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </template>
+          </el-table-column>
+        </el-table>
       </el-form-item>
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button type="primary" @click="close">确定建库</el-button>
-        <el-button @click="close">暂存</el-button>
+        <el-button type="primary" @click="submit(true)">确定建库</el-button>
+        <el-button @click="submit(false)">暂存</el-button>
       </span>
     </template>
   </el-dialog>
@@ -150,68 +191,13 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .dataset {
-  display: flex;
-  justify-content: space-between;
   width: 100%;
+  position: relative;
 
-  .content-container {
-    display: flex;
-    position: relative;
-
-    .content-select {
-      position: absolute;
-      top: 34px;
-      height: 120px;
-      z-index: 10;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      background-color: #fff;
-      display: flex;
-      width: 100%;
-      flex-direction: column;
-      gap: 17px;
-      padding: 12px;
-      overflow-y: auto;
-    }
-  }
-}
-.title {
-  width: 100%;
-  background: #eee;
-  span {
-    display: inline-block;
-    width: 50%;
-    text-align: center;
-    font-weight: bold;
-  }
-}
-
-.search-demo-list {
-  display: flex;
-  flex-direction: column;
-  width: 50%;
-
-  .search-demo-item {
-    height: 45px;
-    padding-left: 20px;
-    gap: 10px;
-    border: 1px solid #ccc;
-    border-top: none;
-    margin: 0;
-  }
-}
-
-.search-model-list {
-  width: 50%;
-
-  .search-modal-item {
-    height: 45px;
-    display: flex;
-    align-items: center;
-    border: 1px solid #ccc;
-    border-top: none;
-    border-left: none;
-    padding: 20px;
+  :deep(.el-upload.el-upload--text) {
+    position: absolute;
+    right: 0;
+    top: 0;
   }
 }
 </style>

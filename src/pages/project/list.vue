@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watchEffect } from 'vue'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { getProjectList } from '../../api/project'
 import { ElMessage } from 'element-plus'
@@ -15,14 +15,13 @@ const form = reactive({
   search_condition_value: '',
   rangeTime: []
 })
-
 const tableData = reactive({
   datas: [],
   total: 0
 })
-
 const dialogVisible = ref(false)
-const isEdit = ref(false)
+// const isEdit = ref(false)
+const editId = ref(null)
 
 const fetchProjectList = () => {
   const [start_create_time, end_create_time] = form.rangeTime
@@ -46,10 +45,11 @@ const fetchProjectList = () => {
 
 const onSubmit = () => fetchProjectList()
 
-const showDialog = isShow => {
+const showDialog = id => {
+  id && (editId.value = id)
   dialogVisible.value = true
-  isEdit.value = isShow
 }
+const setEditId = value => (editId.value = value)
 
 const goDetail = id => router.push(`/project/detail?id=${id}`)
 
@@ -83,7 +83,7 @@ onMounted(() => fetchProjectList())
     </el-form-item>
   </el-form>
 
-  <el-button type="primary" :icon="Plus" @click="showDialog(false)">新建项目</el-button>
+  <el-button type="primary" :icon="Plus" @click="showDialog()">新建项目</el-button>
   <el-table :data="tableData.datas" style="width: 100%">
     <el-table-column prop="project_name" label="项目名称" />
     <el-table-column prop="description" label="项目描述" />
@@ -93,13 +93,18 @@ onMounted(() => fetchProjectList())
     <el-table-column fixed="right" label="操作">
       <template #default="scope">
         <el-button link type="primary" @click="goDetail(scope.row.id)">查看</el-button>
-        <el-button link type="primary" @click="showDialog(true)">编辑</el-button>
+        <el-button link type="primary" @click="showDialog(scope.row.id)">编辑</el-button>
         <el-button link type="primary" @click="handleDelete">删除</el-button>
       </template>
     </el-table-column>
   </el-table>
 
-  <ProjectDialog v-model:dialogVisible="dialogVisible" :isEdit="isEdit" />
+  <ProjectDialog
+    v-model:dialogVisible="dialogVisible"
+    :edit-id="editId"
+    @set-edit-id="setEditId"
+    @fetchProjectList="fetchProjectList"
+  />
 </template>
 
 <style lang="scss" scoped>
